@@ -52,10 +52,6 @@ class AmbDelta1:
         self._mute_volume = 0
         self._muted = False
 
-    def reset(self):
-        for r in self.relays:
-            r.control(False)
-
     def get(self):
         with self.lock:
             return self._volume
