@@ -91,6 +91,8 @@ class AmbDelta1:
 
 class AmbDelta2:
     def __init__(self, pwr_gpio_name, prefix, inputs=[], outputs=[]):
+        self.lock = Lock()
+
         overlap = set(inputs) & set(outputs)
         if len(overlap) > 0:
             raise RuntimeError("inputs and outputs must be mutually exclusive")
@@ -117,24 +119,25 @@ class AmbDelta2:
         if index < 0 or index > len(self.input_relays):
             raise RuntimeError("invalid input!")
 
-        # TODO: optimization for no-op?
-        self.pwr_gpio.set(True)
+        with self.lock:
+            # TODO: optimization for no-op?
+            self.pwr_gpio.set(True)
 
-        for relay in self.input_relays:
-            relay.control(False)
+            for relay in self.input_relays:
+                relay.control(False)
 
-        time.sleep(0.015)
+            time.sleep(0.015)
 
-        self.input_relays[index].control(True)
+            self.input_relays[index].control(True)
 
-        time.sleep(0.015)
+            time.sleep(0.015)
 
-        for relay in self.input_relays:
-            relay.reset()
+            for relay in self.input_relays:
+                relay.reset()
 
-        self.input = index
+            self.input = index
 
-        self.pwr_gpio.set(False)
+            self.pwr_gpio.set(False)
 
     def select_outputs(self, indices):
         if type(indices) is not list:
@@ -144,21 +147,22 @@ class AmbDelta2:
             if index > len(self.output_relays):
                 raise RuntimeError("invalid output!")
 
-        self.pwr_gpio.set(True)
+        with self.lock:
+            self.pwr_gpio.set(True)
 
-        for relay in self.output_relays:
-            relay.control(False)
+            for relay in self.output_relays:
+                relay.control(False)
 
-        time.sleep(0.015)
+            time.sleep(0.015)
 
-        for index in indices:
-            self.output_relays[index].control(True)
+            for index in indices:
+                self.output_relays[index].control(True)
 
-        time.sleep(0.015)
+            time.sleep(0.015)
 
-        self.outputs = indices
+            self.outputs = indices
 
-        self.pwr_gpio.set(False)
+            self.pwr_gpio.set(False)
 
     def get_outputs(self):
         return self.outputs
