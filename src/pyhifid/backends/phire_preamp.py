@@ -5,7 +5,7 @@ import time
 from pyhifid.hifi import HiFi
 from pyhifid.backends.utils.gpio import Gpio
 from brutefir import BruteFIR
-from threading import Lock
+from threading import Lock, Timer
 
 
 class Relay:
@@ -167,6 +167,40 @@ class AmbDelta2:
         return self.input
 
 
+class LazyPower:
+    """
+    Class to provide lazy power control. turn_on will return
+    the amount of time before the device is "on", and turn_off will
+    power off the device after the grace period expires.
+    """
+    def __init__(self, gpio, turn_on_delay, turn_off_grace):
+        self.gpio = Gpio(gpio, direction=Gpio.OUTPUT)
+        self.on_delay = turn_on_delay
+        self.off_grace = turn_off_grace
+        self.timer = None
+
+        self.gpio.set(False)
+
+    def turn_on(self):
+        if self.timer is not None:
+            self.timer.cancel()
+
+        if not self.gpio.get():
+            self.gpio.set(True)
+            return self.on_delay
+
+        return 0
+
+    def turn_off(self):
+        def deferred_off():
+            self.gpio.set(False)
+            self.timer = None
+
+        if self.timer is None and self.gpio.get():
+            self.timer = Timer(self.off_grace, deferred_off)
+            self.timer.start()
+
+
 class PhirePreamp(HiFi):
     # Delta2 outputs: 5 = headphones, 6 = stereo amp, 7 = subwoofer
     def __init__(self):
@@ -176,7 +210,7 @@ class PhirePreamp(HiFi):
             "RELAY_PWR", "DELTA2_", inputs=[0, 1, 2, 3, 4], outputs=[5, 6, 7]
         )
         self.brutefir = BruteFIR(host="127.0.0.1", port=6556)
-        self.amp_power = Gpio("TRIG_OUT_0", direction=Gpio.OUTPUT)
+        self.amp_power = LazyPower("TRIG_OUT_0", turn_on_delay=4.0, turn_off_grace=120.0)
 
         self._is_on = False
         self._output = None
@@ -206,21 +240,23 @@ class PhirePreamp(HiFi):
         if output == "headphones":
             with self.lock:
                 self._set_outputs([2])
-                self.amp_power.set(False)
+                self.amp_power.turn_off()
                 self.brutefir.change_filter_coeffs("hd650")
         elif output == "speakers":
             with self.lock:
-                self.amp_power.set(True)
-                self._set_outputs([0, 1])
+                t = self.amp_power.turn_on()
+                time.sleep(t)
                 self.brutefir.change_filter_coeffs("harman_with_sub_dec7")
+                self._set_outputs([0, 1])
         elif output == "no_sub":
             with self.lock:
-                self.amp_power.set(True)
+                t = self.amp_power.turn_on()
+                time.sleep(t)
                 self._set_outputs([0])
                 self.brutefir.change_filter_coeffs("harman_without_sub")
         elif output is None:
             with self.lock:
-                self.amp_power.set(False)
+                self.amp_power.turn_off()
                 self._set_outputs([])
                 self.brutefir.change_filter_coeffs("dirac")
         else:
