@@ -116,7 +116,9 @@ class AmbDelta2:
             raise RuntimeError("invalid input!")
 
         with self.lock:
-            # TODO: optimization for no-op?
+            if index == self.input:
+                return
+
             self.pwr_gpio.set(True)
 
             for relay in self.input_relays:
@@ -138,12 +140,16 @@ class AmbDelta2:
     def select_outputs(self, indices):
         if type(indices) is not list:
             indices = [indices]
+        indices = sorted(indices)
 
         for index in indices:
             if index > len(self.output_relays):
                 raise RuntimeError("invalid output!")
 
         with self.lock:
+            if indices == self.outputs:
+                return
+
             self.pwr_gpio.set(True)
 
             for relay in self.output_relays:
