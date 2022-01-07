@@ -58,6 +58,9 @@ class Client(HiFi):
     def is_on(self):
         return self._get("power")["power"]
 
+    def remote_info(self):
+        return self._get("remotes")["remotes"]
+
 
 def cli(hifi):
     def do_volume(args):
@@ -105,6 +108,9 @@ def cli(hifi):
     def do_quit(args):
         sys.exit(0)
 
+    def do_remotes(args):
+        print(hifi.remote_info())
+
     cmds = {
         "vol": do_volume,
         "volume": do_volume,
@@ -113,6 +119,7 @@ def cli(hifi):
         "output": do_output,
         "outputs": do_output,
         "power": do_power,
+        "remotes": do_remotes,
         "quit": do_quit,
         "q": do_quit,
     }

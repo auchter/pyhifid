@@ -6,6 +6,7 @@ from flask_restful import inputs
 from gevent.pywsgi import WSGIServer
 
 HIFI = None
+REMOTE_INFO = None
 
 
 class Power(Resource):
@@ -83,9 +84,18 @@ class Output(Resource):
         HIFI.set_output(args.output)
 
 
-def serve_api(hifi):
+class Remotes(Resource):
+    def get(self):
+        info = REMOTE_INFO.get_info()
+        return { "remotes": info }
+
+
+def serve_api(hifi, remote_info):
     global HIFI
     HIFI = hifi
+
+    global REMOTE_INFO
+    REMOTE_INFO = remote_info
 
     app = Flask("pyhifid")
     api = Api(app)
@@ -94,6 +104,7 @@ def serve_api(hifi):
     api.add_resource(Mute, "/mute")
     api.add_resource(Volume, "/volume")
     api.add_resource(Output, "/output")
+    api.add_resource(Remotes, "/remotes")
 
     server = WSGIServer(("", 4664), app)
     server.serve_forever()

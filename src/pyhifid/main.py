@@ -5,7 +5,7 @@ import logging
 import sys
 
 import pyhifid.backends
-from pyhifid.powermate import create_powermate
+from pyhifid.powermate import create_powermate, RemoteInfo
 from pyhifid.api import serve_api
 
 
@@ -46,11 +46,12 @@ def main():
 
     hifi = target()
 
+    remote_info = RemoteInfo()
     powermates = []
     for addr in args.powermate_addr:
-        powermates.append(create_powermate(addr, hifi))
+        powermates.append(create_powermate(addr, hifi, remote_info))
 
-    serve_api(hifi)
+    serve_api(hifi, remote_info)
 
 
 if __name__ == "__main__":

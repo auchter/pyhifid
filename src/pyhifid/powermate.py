@@ -7,9 +7,25 @@ from threading import Lock, Thread
 from powermate import Powermate, PowermateDelegate
 
 
+class RemoteInfo:
+    def __init__(self):
+        self.info = {}
+
+    def battery_report(self, addr, val):
+        self.info[addr] = {
+            "battery_level": val,
+            "report_time": datetime.datetime.now().isoformat(),
+        }
+
+    def get_info(self):
+        return self.info
+
+
 class PowermatePreamp(PowermateDelegate):
-    def __init__(self, hifi):
+    def __init__(self, addr, hifi, info):
+        self.addr = addr
         self.hifi = hifi
+        self.info = info
         self.logger = logging.getLogger(__name__)
         self.lock = Lock()
         self.last = datetime.datetime.now()
@@ -34,6 +50,7 @@ class PowermatePreamp(PowermateDelegate):
 
     def on_battery_report(self, val):
         self.logger.debug(f"powermate battery: {val}%")
+        self.info.battery_report(self.addr, val)
 
     def on_press(self):
         self.logger.debug("powermate button pressed")
@@ -76,5 +93,5 @@ class PowermatePreamp(PowermateDelegate):
         self._adjust_output(-1)
 
 
-def create_powermate(addr, hifi):
-    return Powermate(addr, PowermatePreamp(hifi))
+def create_powermate(addr, hifi, info):
+    return Powermate(addr, PowermatePreamp(addr, hifi, info))
