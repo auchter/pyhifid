@@ -1,0 +1,8 @@
+{
+    "domain": "pyhifid",
+    "name": "pyhifid media_player integration",
+    "documentation": "https://github.com/auchter/pyhifid",
+    "codeowners": [],
+    "iot_class": "local_polling",
+    "version": "0.0.1"
+}
