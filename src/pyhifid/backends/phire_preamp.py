@@ -267,14 +267,14 @@ class PhirePreamp(HiFi):
             with self.lock:
                 t = self.amp_power.turn_on()
                 time.sleep(t)
-                self.brutefir.change_filter_coeffs("harman_with_sub_dec7")
+                self.brutefir.change_filter_coeffs("speakers")
                 self._set_outputs([0, 1])
         elif output == "no_sub":
             with self.lock:
                 t = self.amp_power.turn_on()
                 time.sleep(t)
                 self._set_outputs([0])
-                self.brutefir.change_filter_coeffs("harman_without_sub")
+                self.brutefir.change_filter_coeffs("no_sub")
         elif output is None:
             with self.lock:
                 self.amp_power.turn_off()
