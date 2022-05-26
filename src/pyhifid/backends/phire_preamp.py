@@ -6,7 +6,10 @@ from pyhifid.hifi import HiFi
 from pyhifid.backends.utils.gpio import Gpio
 from brutefir import BruteFIR
 from threading import Lock, Timer
+import logging
+import gpiod
 
+_LOGGER = logging.getLogger(__name__)
 
 class Relay:
     def __init__(self, set_gpio, rst_gpio):
@@ -27,61 +30,73 @@ class Relay:
         self.rst_gpio.set(False)
 
 
+def get_linebulk(lines):
+    for chip in gpiod.ChipIter():
+        try:
+            bulk = chip.find_lines(lines)
+            _LOGGER.debug("found chip! " + str(bulk))
+            return bulk
+        except Exception as e:
+            _LOGGER.debug(str(e))
+
+    raise RuntimeError("couldn't find gpio chip for lines: " + str(lines))
+
+
+def to_bitarray(x):
+    return [1 if (x & (1 << i)) > 0 else 0 for i in range(8)]
+
+
 class AmbDelta1:
     def __init__(self, pwr_gpio_name, prefix, relays=8):
         self.lock = Lock()
         self.pwr_gpio = Gpio(pwr_gpio_name, direction=Gpio.OUTPUT)
-        self.relays = []
-        for i in range(relays):
-            set_gpio = Gpio(f"{prefix}SET_{i}", direction=Gpio.OUTPUT)
-            rst_gpio = Gpio(f"{prefix}RST_{i}", direction=Gpio.OUTPUT)
-            self.relays.append(Relay(set_gpio, rst_gpio))
-
-        self.pwr_gpio.set(True)
-
-        for r in self.relays:
-            r.control(False)
-
-        time.sleep(0.015)
-        for relay in self.relays:
-            relay.reset()
-
-        self.pwr_gpio.set(False)
 
         self._volume = 0
         self._mute_volume = 0
         self._muted = False
 
+        set_line_names = [f"{prefix}SET_{i}" for i in range(relays)]
+        rst_line_names = [f"{prefix}RST_{i}" for i in range(relays)]
+
+        self.set_lines = get_linebulk(set_line_names)
+        self.rst_lines = get_linebulk(rst_line_names)
+
+        self.set_lines.request(consumer="pyhifid", type=gpiod.LINE_REQ_DIR_OUT)
+        self.rst_lines.request(consumer="pyhifid", type=gpiod.LINE_REQ_DIR_OUT) 
+
+        self.set(0, force=True)
+
     def get(self):
         with self.lock:
             return self._volume
 
-    def set(self, volume):
+    def set(self, volume, force=False):
+        _LOGGER.debug(f"{volume}, force: {force}")
+
         if volume > 255:
             raise RuntimeError("invalid volume level")
 
         with self.lock:
-            for i, relay in enumerate(self.relays):
-                ctrl = volume & (1 << i)
-                if ctrl == 0:
-                    relay.control(False)
+            mask = volume ^ self._volume
+
+            if force:
+                mask = 0xFF
+                self._volume = 0xFF
 
             self.pwr_gpio.set(True)
             time.sleep(0.015)
-            self.pwr_gpio.set(False)
 
-            for i, relay in enumerate(self.relays):
-                ctrl = volume & (1 << i)
-                if ctrl:
-                    relay.control(True)
-
-            self.pwr_gpio.set(True)
+            self.rst_lines.set_values(to_bitarray(self._volume & mask))
+            time.sleep(0.003)
+            self.set_lines.set_values(to_bitarray(volume & mask))
             time.sleep(0.015)
+
+            self.rst_lines.set_values(to_bitarray(0))
+            self.set_lines.set_values(to_bitarray(0))
+
+            time.sleep(0.015)
+
             self.pwr_gpio.set(False)
-
-            for relay in self.relays:
-                relay.reset()
-
             self._volume = volume
 
 
