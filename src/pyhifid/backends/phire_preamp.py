@@ -241,13 +241,13 @@ class PhirePreamp(HiFi):
 
     def turn_on(self):
         with self.lock:
-            self.set_output("headphones")
+            self.set_output("headphones-hd650")
             self.set_volume(170)
             self._is_on = True
 
     def turn_off(self):
         with self.lock:
-            self.set_output("headphones")
+            self.set_output("headphones-hd650")
             self.set_volume(0)
             self._is_on = False
 
@@ -255,14 +255,24 @@ class PhirePreamp(HiFi):
         return self._is_on
 
     def get_outputs(self):
-        return ["headphones", "speakers", "no_sub"]
+        return [
+            "headphones-hd650",
+            "headphones-dt770",
+            "speakers",
+            "no_sub"
+        ]
 
     def set_output(self, output):
-        if output == "headphones":
+        if output == "headphones-hd650":
             with self.lock:
                 self._set_outputs([2])
                 self.amp_power.turn_off()
                 self.brutefir.change_filter_coeffs("hd650")
+        elif output == "headphones-dt770":
+            with self.lock:
+                self._set_outputs([2])
+                self.amp_power.turn_off()
+                self.brutefir.change_filter_coeffs("dt770")
         elif output == "speakers":
             with self.lock:
                 t = self.amp_power.turn_on()
