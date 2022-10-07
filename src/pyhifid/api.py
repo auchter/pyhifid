@@ -4,6 +4,7 @@ from flask import Flask
 from flask_restful import reqparse, Api, Resource
 from flask_restful import inputs
 from gevent.pywsgi import WSGIServer
+import sys
 
 HIFI = None
 REMOTE_INFO = None
@@ -90,7 +91,7 @@ class Remotes(Resource):
         return { "remotes": info }
 
 
-def serve_api(hifi, remote_info):
+def serve_api(hifi, remote_info, debug=False):
     global HIFI
     HIFI = hifi
 
@@ -106,5 +107,5 @@ def serve_api(hifi, remote_info):
     api.add_resource(Output, "/output")
     api.add_resource(Remotes, "/remotes")
 
-    server = WSGIServer(("", 4664), app)
+    server = WSGIServer(("", 4664), app, log=sys.stderr if debug else None)
     server.serve_forever()
