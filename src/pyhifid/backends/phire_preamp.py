@@ -205,11 +205,11 @@ class LazyPower:
 
     def turn_on(self):
         if self.timer is not None:
-            _LOGGING.debug(f"LazyPower: {self.gpio} cancelling timer")
+            _LOGGER.debug(f"LazyPower: {self.gpio} cancelling timer")
             self.timer.cancel()
 
         if not self.gpio.get():
-            _LOGGING.info(f"LazyPower: {self.gpio} turning on")
+            _LOGGER.info(f"LazyPower: {self.gpio} turning on")
             self.gpio.set(True)
             return self.on_delay
 
@@ -217,12 +217,12 @@ class LazyPower:
 
     def turn_off(self):
         def deferred_off():
-            _LOGGING.info(f"LazyPower: {self.gpio} turning off")
+            _LOGGER.info(f"LazyPower: {self.gpio} turning off")
             self.gpio.set(False)
             self.timer = None
 
         if self.timer is None and self.gpio.get():
-            _LOGGING.debug(f"LazyPower: {self.gpio} scheduling deferred off")
+            _LOGGER.debug(f"LazyPower: {self.gpio} scheduling deferred off")
             self.timer = Timer(self.off_grace, deferred_off)
             self.timer.start()
 
