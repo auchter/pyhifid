@@ -195,6 +195,7 @@ class LazyPower:
     power off the device after the grace period expires.
     """
     def __init__(self, gpio, turn_on_delay, turn_off_grace):
+        self.gpio_name = gpio
         self.gpio = Gpio(gpio, direction=Gpio.OUTPUT)
         self.on_delay = turn_on_delay
         self.off_grace = turn_off_grace
@@ -204,9 +205,11 @@ class LazyPower:
 
     def turn_on(self):
         if self.timer is not None:
+            _LOGGING.debug(f"LazyPower: {self.gpio} cancelling timer")
             self.timer.cancel()
 
         if not self.gpio.get():
+            _LOGGING.info(f"LazyPower: {self.gpio} turning on")
             self.gpio.set(True)
             return self.on_delay
 
@@ -214,10 +217,12 @@ class LazyPower:
 
     def turn_off(self):
         def deferred_off():
+            _LOGGING.info(f"LazyPower: {self.gpio} turning off")
             self.gpio.set(False)
             self.timer = None
 
         if self.timer is None and self.gpio.get():
+            _LOGGING.debug(f"LazyPower: {self.gpio} scheduling deferred off")
             self.timer = Timer(self.off_grace, deferred_off)
             self.timer.start()
 
