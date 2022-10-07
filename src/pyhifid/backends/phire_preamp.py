@@ -244,15 +244,40 @@ class PhirePreamp(HiFi):
         self._muted = False
         self._d2_outputs = []
 
+        self.delta2_outputs = {
+            "headphones": [2],
+            "speakers": [0, 1],
+            "no_sub": [0],
+            "none": [],
+        }
+
+        self.output_coeffs = {
+            "headphones": [
+                "hd650",
+                "dt770",
+                "dirac",
+            ],
+            "speakers": [
+                "speakers"
+            ],
+            "no_sub": [
+                "no_sub",
+                "dirac",
+            ],
+            "none": [
+                "dirac",
+            ]
+        }
+
     def turn_on(self):
         with self.lock:
-            self.set_output("headphones-hd650")
+            self.set_output("none:dirac")
             self.set_volume(170)
             self._is_on = True
 
     def turn_off(self):
         with self.lock:
-            self.set_output("headphones-hd650")
+            self.set_output("none:dirac")
             self.set_volume(0)
             self._is_on = False
 
@@ -260,49 +285,28 @@ class PhirePreamp(HiFi):
         return self._is_on
 
     def get_outputs(self):
-        return [
-            "headphones-hd650",
-            "headphones-dt770",
-            "speakers",
-            "no_sub"
-        ]
+        ret = []
+        for output, coeffs in self.output_coeffs.items():
+            for coeff in coeffs:
+                ret.append(f"{output}:{coeff}")
+        return ret
 
-    def set_output(self, output):
-        if output == "headphones-hd650":
-            with self.lock:
-                self._set_outputs([2])
-                self.amp_power.turn_off()
-                self.brutefir.change_filter_coeffs("hd650")
-        elif output == "headphones-dt770":
-            with self.lock:
-                self._set_outputs([2])
-                self.amp_power.turn_off()
-                self.brutefir.change_filter_coeffs("dt770")
-        elif output == "speakers":
-            with self.lock:
-                t = self.amp_power.turn_on()
-                time.sleep(t)
-                self.brutefir.change_filter_coeffs("speakers")
-                self._set_outputs([0, 1])
-        elif output == "no_sub":
-            with self.lock:
-                t = self.amp_power.turn_on()
-                time.sleep(t)
-                self._set_outputs([0])
-                self.brutefir.change_filter_coeffs("no_sub")
-        elif output is None:
-            with self.lock:
-                self.amp_power.turn_off()
-                self._set_outputs([])
-                self.brutefir.change_filter_coeffs("dirac")
-        else:
-            print("Unknown output")
-            return
+    def set_output(self, output_coeffs):
+        output, coeffs = output_coeffs.split(":")
 
-        self._output = output
+        with self.lock:
+            self.brutefir.change_filter_coeffs(coeffs)
+            if output in ['speakers', 'no_sub']:
+                self.amp_power.turn_on()
+            else:
+                self.amp_power.turn_off()
+            self._set_outputs(output)
+
+        self._output = output_coeffs
 
     def _set_outputs(self, outputs):
         with self.lock:
+            outputs = self.delta2_outputs[outputs]
             if not self._muted:
                 self.delta2.select_outputs(outputs)
             self._d2_outputs = outputs
