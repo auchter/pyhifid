@@ -342,3 +342,6 @@ class PhirePreamp(HiFi):
 
     def muted(self):
         return self._muted
+
+    def brutefir_graph(self):
+        return self.brutefir.graph()

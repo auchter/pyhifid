@@ -58,3 +58,6 @@ class MockHiFi(HiFi):
 
     def is_on(self):
         return self._power
+
+    def brutefir_graph(self):
+        return ""
