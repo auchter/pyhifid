@@ -90,9 +90,11 @@ class Remotes(Resource):
         info = REMOTE_INFO.get_info()
         return { "remotes": info }
 
+
 class BrutefirGraph(Resource):
     def get(self):
-        return HIFI.brutefir_graph()
+        return (HIFI.brutefir_graph(), {'Content-Type': 'text/plain'})
+
 
 def serve_api(hifi, remote_info, debug=False):
     global HIFI
@@ -109,7 +111,7 @@ def serve_api(hifi, remote_info, debug=False):
     api.add_resource(Volume, "/volume")
     api.add_resource(Output, "/output")
     api.add_resource(Remotes, "/remotes")
-    api.add_resource(BrutefirGraph, "/debug/brutefir_graph")
+    api.add_resource(BrutefirGraph, "/brutefir_graph")
 
     server = WSGIServer(("", 4664), app, log=sys.stderr if debug else None)
     server.serve_forever()
